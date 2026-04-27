@@ -1,0 +1,116 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #0a0a0b;
+  --color-surface: #111114;
+  --color-surface-elevated: #1a1a1f;
+  --color-border: #2a2a32;
+  --color-border-subtle: #1f1f26;
+  --color-foreground: #f4f4f5;
+  --color-muted: #71717a;
+  --color-muted-foreground: #a1a1aa;
+
+  --color-long: #10b981;
+  --color-long-soft: #064e3b;
+  --color-short: #ef4444;
+  --color-short-soft: #7f1d1d;
+  --color-neutral: #f59e0b;
+
+  --color-gpt: #10a37f;
+  --color-gemini: #4285f4;
+  --color-claude: #d97706;
+  --color-perplexity: #20b8cd;
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+* {
+  border-color: var(--color-border);
+}
+
+html,
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: rgba(16, 185, 129, 0.25);
+  color: #ecfdf5;
+}
+
+/* Subtle scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 6px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3a3a44;
+}
+
+/* Gradient utilities */
+.bg-radial-glow {
+  background: radial-gradient(
+    ellipse 80% 60% at 50% -10%,
+    rgba(16, 185, 129, 0.08),
+    transparent 70%
+  );
+}
+
+.text-gradient-brand {
+  background: linear-gradient(135deg, #10b981 0%, #20b8cd 50%, #4285f4 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Pulse animation for in-progress rounds */
+@keyframes pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Shimmer bar for loading skeleton bars in gauges */
+@keyframes shimmer-slide {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.shimmer-bar {
+  background: linear-gradient(
+    90deg,
+    var(--color-border-subtle) 0%,
+    var(--color-border) 40%,
+    rgba(161, 161, 170, 0.3) 50%,
+    var(--color-border) 60%,
+    var(--color-border-subtle) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer-slide 1.6s linear infinite;
+}
