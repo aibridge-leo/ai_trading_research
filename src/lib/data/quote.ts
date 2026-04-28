@@ -13,9 +13,17 @@ interface YahooChartMeta {
   exchangeName?: string;
 }
 
+interface YahooChartResult {
+  meta: YahooChartMeta;
+  timestamp?: number[];
+  indicators?: {
+    quote?: { close?: (number | null)[]; volume?: (number | null)[] }[];
+  };
+}
+
 interface YahooChartResponse {
   chart?: {
-    result?: { meta: YahooChartMeta }[];
+    result?: YahooChartResult[];
     error?: { code: string; description: string } | null;
   };
 }
@@ -25,8 +33,9 @@ export async function fetchQuote(symbol: string): Promise<QuoteSnapshot | null> 
   if (!/^[A-Z.\-]{1,10}$/.test(ticker)) return null;
 
   try {
-    // v8 chart 엔드포인트: 인증 없이도 동작하며, 가격/이전 종가/거래량 등 핵심 메타 제공
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=2d`;
+    // range=7d: 최근 거래일 5~7개를 받아 close[-2]를 진짜 직전 거래일 종가로 사용.
+    // chartPreviousClose는 "range 시작 직전 종가"라 잘못된 기준 (예: range=2d면 3일 전 종가).
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=7d`;
     const res = await fetch(url, {
       headers: {
         "User-Agent":
@@ -38,20 +47,41 @@ export async function fetchQuote(symbol: string): Promise<QuoteSnapshot | null> 
 
     if (!res.ok) return null;
     const data = (await res.json()) as YahooChartResponse;
-    const meta = data.chart?.result?.[0]?.meta;
+    const result = data.chart?.result?.[0];
+    const meta = result?.meta;
     if (!meta || meta.regularMarketPrice === undefined) return null;
 
-    const prev = meta.chartPreviousClose ?? meta.previousClose ?? meta.regularMarketPrice;
-    const change = meta.regularMarketPrice - prev;
-    const changePercent = prev > 0 ? (change / prev) * 100 : 0;
+    const price = meta.regularMarketPrice;
+
+    // 직전 거래일 종가: close 배열에서 마지막 유효값의 직전(끝-2)
+    // close[-1]은 오늘(또는 가장 최신) 종가/현재가이고, close[-2]가 진짜 어제 종가.
+    const closes = (result?.indicators?.quote?.[0]?.close ?? []).filter(
+      (c): c is number => typeof c === "number" && Number.isFinite(c),
+    );
+    let prevClose: number;
+    if (closes.length >= 2) {
+      // 마지막 close가 현재가와 거의 같으면 그게 "오늘" → 직전(끝-2) 사용
+      // 다르면 마지막 close 자체가 직전 거래일 (장 시작 전 등)
+      const last = closes[closes.length - 1];
+      const isLastToday = Math.abs(last - price) < 0.01;
+      prevClose = isLastToday ? closes[closes.length - 2] : last;
+    } else if (closes.length === 1) {
+      prevClose = closes[0];
+    } else {
+      // 폴백: chartPreviousClose (정확하지 않지만 없으면 0% 표시 방지)
+      prevClose = meta.chartPreviousClose ?? meta.previousClose ?? price;
+    }
+
+    const change = price - prevClose;
+    const changePercent = prevClose > 0 ? (change / prevClose) * 100 : 0;
 
     return {
       symbol: meta.symbol,
       shortName: meta.shortName ?? meta.longName ?? null,
-      price: meta.regularMarketPrice,
+      price,
       change,
       changePercent,
-      // v8 chart에는 시총이 없음 — UI에서 "—" 표시. (별도 엔드포인트 필요시 추후 보강)
+      // v8 chart에는 시총이 없음
       marketCap: null,
       volume: meta.regularMarketVolume ?? null,
       currency: meta.currency ?? "USD",
