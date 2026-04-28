@@ -209,6 +209,6 @@ model: openai.responses("gpt-5.4"),  // → "gpt-5.4-mini" 등
 
 ---
 
-## 한방에 재구축하기
+## Claude Code 사용자라면
 
-[`PROMPT_ONESHOT.md`](PROMPT_ONESHOT.md) 파일을 Claude Code에 통째로 붙여넣으면 빈 폴더에서 동일한 앱이 생성됩니다.
+[`QUICK_INSTALL.md`](QUICK_INSTALL.md) 파일을 Claude Code에 통째로 붙여넣으면 클론·설치·키 안내·서버 실행까지 자동으로 진행됩니다 (1~2분 소요).
