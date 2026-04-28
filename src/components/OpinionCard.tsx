@@ -11,6 +11,7 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Markdown } from "./Markdown";
 import type { ModelOpinion, Position } from "@/lib/types";
 
 interface Props {
@@ -206,8 +207,8 @@ export function OpinionCard({ opinion, round, loading, accent, forceExpanded }: 
       {expanded && !isError && (
         <>
           {body && (
-            <div className="mt-3 max-h-[600px] overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed text-[var(--color-foreground)]/90">
-              {body}
+            <div className="mt-3 max-h-[600px] overflow-y-auto pr-1">
+              <Markdown>{body}</Markdown>
             </div>
           )}
           {opinion.key_reasons.length > 0 && (
