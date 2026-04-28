@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronsDown, ChevronsUp } from "lucide-react";
+import { motion } from "framer-motion";
+import { ChevronDown, ChevronUp, ChevronsDown, ChevronsUp } from "lucide-react";
 import { OpinionCard } from "./OpinionCard";
 import { ModelIcon } from "./ModelIcon";
 import { MODELS, type ModelOpinion } from "@/lib/types";
@@ -14,10 +15,26 @@ interface Props {
 
 const ROUNDS: (1 | 2 | 3)[] = [1, 2, 3];
 
+type RoundExpandState = Record<1 | 2 | 3, boolean>;
+
 export function DiscussionGrid({ opinions, currentRound }: Props) {
-  // 일괄 펼침/접기 신호 (nonce 패턴으로 자식 카드 강제 동기화)
-  const [bulkSignal, setBulkSignal] = useState<{ value: boolean; nonce: number } | null>(null);
+  // 라운드별 expand 상태. 같은 라운드의 모든 모델 카드 본문이 함께 토글됨.
+  const [roundExpanded, setRoundExpanded] = useState<RoundExpandState>({
+    1: false,
+    2: false,
+    3: false,
+  });
+
+  const toggleRound = (r: 1 | 2 | 3) =>
+    setRoundExpanded((s) => ({ ...s, [r]: !s[r] }));
+  const expandAll = () =>
+    setRoundExpanded({ 1: true, 2: true, 3: true });
+  const collapseAll = () =>
+    setRoundExpanded({ 1: false, 2: false, 3: false });
+
   const hasOpinions = opinions.length > 0;
+  const allExpanded = ROUNDS.every((r) => roundExpanded[r]);
+  const allCollapsed = ROUNDS.every((r) => !roundExpanded[r]);
 
   return (
     <div className="space-y-4">
@@ -40,25 +57,23 @@ export function DiscussionGrid({ opinions, currentRound }: Props) {
         ))}
       </div>
 
-      {/* 일괄 펼침/접기 */}
+      {/* 일괄 펼침/접기 (모든 라운드) */}
       {hasOpinions && (
         <div className="flex justify-end gap-2">
           <button
             type="button"
-            onClick={() =>
-              setBulkSignal({ value: true, nonce: (bulkSignal?.nonce ?? 0) + 1 })
-            }
-            className="flex items-center gap-1 rounded-md border border-[var(--color-border-subtle)] bg-[var(--color-surface)]/40 px-2.5 py-1 text-[11px] text-[var(--color-muted-foreground)] transition hover:border-[var(--color-border)] hover:text-foreground"
+            onClick={expandAll}
+            disabled={allExpanded}
+            className="flex items-center gap-1 rounded-md border border-[var(--color-border-subtle)] bg-[var(--color-surface)]/40 px-2.5 py-1 text-[11px] text-[var(--color-muted-foreground)] transition hover:border-[var(--color-border)] hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
           >
             <ChevronsDown className="h-3 w-3" />
             전체 펼치기
           </button>
           <button
             type="button"
-            onClick={() =>
-              setBulkSignal({ value: false, nonce: (bulkSignal?.nonce ?? 0) + 1 })
-            }
-            className="flex items-center gap-1 rounded-md border border-[var(--color-border-subtle)] bg-[var(--color-surface)]/40 px-2.5 py-1 text-[11px] text-[var(--color-muted-foreground)] transition hover:border-[var(--color-border)] hover:text-foreground"
+            onClick={collapseAll}
+            disabled={allCollapsed}
+            className="flex items-center gap-1 rounded-md border border-[var(--color-border-subtle)] bg-[var(--color-surface)]/40 px-2.5 py-1 text-[11px] text-[var(--color-muted-foreground)] transition hover:border-[var(--color-border)] hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
           >
             <ChevronsUp className="h-3 w-3" />
             전체 접기
@@ -70,31 +85,69 @@ export function DiscussionGrid({ opinions, currentRound }: Props) {
       {ROUNDS.map((round) => {
         const isCurrent = currentRound === round;
         const isPast = currentRound !== null && round < currentRound;
+        const roundOpinions = opinions.filter((o) => o.round === round);
+        const isExpanded = roundExpanded[round];
+        const totalChars = roundOpinions.reduce(
+          (sum, o) => sum + (o.body?.length ?? 0),
+          0,
+        );
+        const hasAnyBody = totalChars > 0;
+
         return (
-          <div key={round} className="relative">
-            <div className="absolute -left-3 top-3 z-10">
-              <span
-                className={cn(
-                  "flex h-6 w-6 items-center justify-center rounded-full border bg-[var(--color-surface-elevated)] text-[10px] font-bold tabular-nums",
-                  isCurrent && "border-emerald-500/60 text-emerald-400 animate-pulse-ring",
-                  isPast && "border-[var(--color-border)] text-[var(--color-muted-foreground)]",
-                  !isCurrent && !isPast && "text-[var(--color-muted)]",
-                )}
-              >
-                {round}
-              </span>
+          <div key={round} className="space-y-2">
+            {/* 라운드 헤더: 번호 + 라벨 + 본문 토글 */}
+            <div className="flex items-center justify-between gap-2 pl-2">
+              <div className="flex items-center gap-2">
+                <span
+                  className={cn(
+                    "flex h-6 w-6 items-center justify-center rounded-full border bg-[var(--color-surface-elevated)] text-[10px] font-bold tabular-nums",
+                    isCurrent && "border-emerald-500/60 text-emerald-400 animate-pulse-ring",
+                    isPast && "border-[var(--color-border)] text-[var(--color-muted-foreground)]",
+                    !isCurrent && !isPast && "text-[var(--color-muted)]",
+                  )}
+                >
+                  {round}
+                </span>
+                <span className="text-xs uppercase tracking-wider text-[var(--color-muted)]">
+                  {round}차 의견
+                </span>
+              </div>
+
+              {/* 라운드 단위 본문 토글 (이 라운드에 본문이 있을 때만) */}
+              {hasAnyBody && (
+                <button
+                  type="button"
+                  onClick={() => toggleRound(round)}
+                  className="flex items-center gap-1 rounded-md border border-[var(--color-border-subtle)] bg-[var(--color-surface)]/40 px-2.5 py-1 text-[11px] text-[var(--color-muted-foreground)] transition hover:border-[var(--color-border)] hover:text-foreground"
+                >
+                  {isExpanded ? (
+                    <>
+                      <ChevronUp className="h-3 w-3" />
+                      본문 접기
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="h-3 w-3" />
+                      본문 보기 (총 {totalChars.toLocaleString()}자)
+                    </>
+                  )}
+                </button>
+              )}
             </div>
+
+            {/* 카드 그리드 */}
             <div className="grid grid-cols-2 gap-4 pl-2">
               {MODELS.map((m) => {
-                const op = opinions.find((o) => o.modelId === m.id && o.round === round) ?? null;
+                const op =
+                  opinions.find((o) => o.modelId === m.id && o.round === round) ?? null;
                 return (
                   <OpinionCard
-                    key={`${m.id}-${round}-${bulkSignal?.nonce ?? 0}`}
+                    key={`${m.id}-${round}`}
                     opinion={op}
                     round={round}
                     loading={isCurrent && !op}
                     accent={m.accent}
-                    forceExpanded={bulkSignal?.value ?? null}
+                    expanded={isExpanded}
                   />
                 );
               })}

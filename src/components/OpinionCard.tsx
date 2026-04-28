@@ -2,14 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import {
-  TrendingDown,
-  TrendingUp,
-  Minus,
-  AlertCircle,
-  ChevronDown,
-  ChevronUp,
-} from "lucide-react";
+import { TrendingDown, TrendingUp, Minus, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Markdown } from "./Markdown";
 import type { ModelOpinion, Position } from "@/lib/types";
@@ -19,8 +12,8 @@ interface Props {
   round: 1 | 2 | 3;
   loading: boolean;
   accent: string;
-  // 외부에서 일괄 펼침/접기 제어
-  forceExpanded?: boolean | null;
+  // 부모(DiscussionGrid)가 라운드별 일괄 제어
+  expanded: boolean;
 }
 
 const POSITION_STYLE: Record<Position, { color: string; bg: string; Icon: typeof TrendingUp }> = {
@@ -29,7 +22,7 @@ const POSITION_STYLE: Record<Position, { color: string; bg: string; Icon: typeof
   관망: { color: "text-amber-400", bg: "bg-amber-500/10 border-amber-500/20", Icon: Minus },
 };
 
-// 모델 응답 평균 ~12-20초로 예상. 점근적으로 ~95%까지 차오르고 실제 완료 시 100%로 스냅.
+// 점근 곡선 진행률 (분석 중 시각화)
 function useAsymptoticProgress(active: boolean): { pct: number; elapsedSec: number } {
   const [pct, setPct] = useState(0);
   const [elapsedSec, setElapsedSec] = useState(0);
@@ -46,8 +39,6 @@ function useAsymptoticProgress(active: boolean): { pct: number; elapsedSec: numb
     const tick = () => {
       if (startRef.current === null) return;
       const elapsed = (performance.now() - startRef.current) / 1000;
-      // 점근 곡선: 95% * (1 - exp(-elapsed / 8))
-      // 8s ~63%, 15s ~82%, 25s ~92%, ∞ ~95%
       const p = 95 * (1 - Math.exp(-elapsed / 8));
       setPct(p);
       setElapsedSec(elapsed);
@@ -60,25 +51,14 @@ function useAsymptoticProgress(active: boolean): { pct: number; elapsedSec: numb
   return { pct, elapsedSec };
 }
 
-export function OpinionCard({ opinion, round, loading, accent, forceExpanded }: Props) {
-  const [expanded, setExpanded] = useState<boolean>(false);
+export function OpinionCard({ opinion, round, loading, accent, expanded }: Props) {
   const { pct, elapsedSec } = useAsymptoticProgress(loading && !opinion);
-
-  useEffect(() => {
-    if (forceExpanded !== null && forceExpanded !== undefined) {
-      setExpanded(forceExpanded);
-    }
-  }, [forceExpanded]);
 
   if (!opinion) {
     const showProgress = loading;
     const pctStr = String(Math.floor(pct)).padStart(2, "0");
     return (
-      <div
-        className={cn(
-          "flex min-h-[140px] flex-col rounded-xl border border-dashed bg-[var(--color-surface)]/30 p-4",
-        )}
-      >
+      <div className="flex min-h-[140px] flex-col rounded-xl border border-dashed bg-[var(--color-surface)]/30 p-4">
         <div className="flex items-center justify-between">
           <span className="text-[10px] uppercase tracking-wider text-[var(--color-muted)]">
             {round}차 의견
@@ -134,7 +114,6 @@ export function OpinionCard({ opinion, round, loading, accent, forceExpanded }: 
   const Icon = style.Icon;
   const isError = opinion.confidence === 0 && opinion.key_reasons[0]?.startsWith("오류");
   const body = opinion.body ?? "";
-  const hasDetails = body.length > 0 || opinion.key_reasons.length > 0;
 
   return (
     <motion.div
@@ -203,7 +182,7 @@ export function OpinionCard({ opinion, round, loading, accent, forceExpanded }: 
         </div>
       )}
 
-      {/* 본문 + 핵심 근거: 펼친 상태에서만 노출 */}
+      {/* 본문 + 핵심 근거: 라운드 단위 expanded 제어 */}
       {expanded && !isError && (
         <>
           {body && (
@@ -227,26 +206,6 @@ export function OpinionCard({ opinion, round, loading, accent, forceExpanded }: 
             </div>
           )}
         </>
-      )}
-
-      {hasDetails && !isError && (
-        <button
-          type="button"
-          onClick={() => setExpanded((x) => !x)}
-          className="mt-3 flex items-center gap-1 self-start rounded-md border border-[var(--color-border-subtle)] px-2 py-0.5 text-[11px] text-[var(--color-muted-foreground)] transition hover:border-[var(--color-border)] hover:text-foreground"
-        >
-          {expanded ? (
-            <>
-              <ChevronUp className="h-3 w-3" />
-              본문 접기
-            </>
-          ) : (
-            <>
-              <ChevronDown className="h-3 w-3" />
-              본문 보기{body.length > 0 ? ` (${body.length.toLocaleString()}자)` : ""}
-            </>
-          )}
-        </button>
       )}
     </motion.div>
   );
