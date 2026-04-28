@@ -60,6 +60,18 @@ npm run dev
 
 브라우저에서 http://localhost:3000 접속 → 종목 티커(예: `AAPL`, `NVDA`, `TSLA`) 입력 → "분석 시작".
 
+### 5. (선택) 모델 로고 추가
+
+기본 상태에서는 모델 액센트 색상의 **이니셜 원 배지**(G/G/P)로 표시됩니다. 공식 로고를 사용하고 싶다면 `public/icons/` 폴더에 다음 파일명으로 PNG를 배치하세요:
+
+| 파일 | 모델 |
+|---|---|
+| `public/icons/gpt.png` | OpenAI ChatGPT |
+| `public/icons/gemini.png` | Google Gemini |
+| `public/icons/perplexity.png` | Perplexity |
+
+> 로고 파일은 상표권 보호 대상이므로 저장소에 포함되지 않습니다. 파일이 없어도 앱은 정상 동작합니다.
+
 ---
 
 ## 작동 방식

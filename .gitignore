@@ -50,3 +50,7 @@ yarn-error.log*
 Thumbs.db
 .idea/
 .vscode/
+
+# Brand logo assets (trademarked - users add their own optionally)
+public/icons/*.png
+src/img/*.png

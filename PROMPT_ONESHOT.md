@@ -372,9 +372,10 @@ S&P 500 + NASDAQ 100 핵심 + 인기 ETF 약 90개를 정적 배열로 하드코
 │           ├── tickers.ts            # 정적 리스트
 │           └── history.ts            # JSON 파일 I/O
 ├── public/icons/
-│   ├── gpt.png         # OpenAI 검정 로고 (다크모드에서 invert)
-│   ├── gemini.png      # 4점 별 컬러
-│   └── perplexity.png  # 시안 심볼
+│   ├── .gitkeep        # 폴더 보존
+│   ├── gpt.png         # (선택) OpenAI 검정 로고 — 없으면 fallback 배지
+│   ├── gemini.png      # (선택) 4점 별 컬러
+│   └── perplexity.png  # (선택) 시안 심볼
 ├── data/history/.gitkeep
 ├── .env.local.example
 ├── .gitignore
@@ -385,7 +386,7 @@ S&P 500 + NASDAQ 100 핵심 + 인기 ETF 약 90개를 정적 배열로 하드코
 └── README.md
 ```
 
-> **아이콘**: 4개 PNG를 `public/icons/`에 직접 배치해야 합니다 (저작권 있는 공식 로고). 없으면 `ModelIcon` 컴포넌트가 fallback으로 색깔 원을 표시하도록 구현.
+> **아이콘**: 공식 로고는 상표권 보호 대상이라 저장소에 포함하지 마세요(`.gitignore`에 `public/icons/*.png` 추가). `ModelIcon` 컴포넌트는 `<img>`의 `onError` 핸들러로 로딩 실패를 감지해 자동으로 **모델 액센트 색상의 이니셜 원 배지**로 폴백합니다. 사용자가 원하면 `public/icons/{gpt,gemini,perplexity}.png`를 배치 가능.
 
 ---
 

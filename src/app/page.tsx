@@ -2,15 +2,16 @@
 
 import { useCallback, useRef, useState } from "react";
 import { Activity } from "lucide-react";
-import Image from "next/image";
 import { TickerSearch } from "@/components/TickerSearch";
 import { PriceHeader } from "@/components/PriceHeader";
 import { GaugePanel } from "@/components/GaugePanel";
 import { DiscussionGrid } from "@/components/DiscussionGrid";
 import { SynthesisPanel } from "@/components/SynthesisPanel";
 import { Disclaimer } from "@/components/Disclaimer";
+import { ModelIcon } from "@/components/ModelIcon";
 import {
   MODELS,
+  PERPLEXITY_META,
   type ModelOpinion,
   type QuoteSnapshot,
   type StreamEvent,
@@ -163,7 +164,7 @@ export default function HomePage() {
       <header className="mb-10">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-cyan-500 shadow-lg shadow-emerald-500/20">
-            <Image src="/icons/perplexity.png" alt="" width={22} height={22} className="opacity-90" />
+            <ModelIcon model={PERPLEXITY_META} size={22} className="opacity-90" />
           </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight">
