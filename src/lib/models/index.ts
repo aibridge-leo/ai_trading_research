@@ -1,7 +1,6 @@
 import type { ModelId, OpinionPayload } from "@/lib/types";
 import { callGPT } from "./gpt";
 import { callGemini } from "./gemini";
-import { callClaude } from "./claude";
 
 const TIMEOUT_MS = 120_000; // 모델별 2분 상한
 
@@ -9,7 +8,7 @@ export async function callModel(
   id: ModelId,
   prompt: string,
 ): Promise<OpinionPayload> {
-  const fn = id === "gpt" ? callGPT : id === "gemini" ? callGemini : callClaude;
+  const fn = id === "gpt" ? callGPT : callGemini;
   return await Promise.race([
     fn(prompt),
     new Promise<OpinionPayload>((_, reject) =>

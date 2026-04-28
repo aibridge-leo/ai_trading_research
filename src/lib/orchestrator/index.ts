@@ -17,34 +17,19 @@ import {
 import { saveAnalysis } from "@/lib/data/history";
 import { fetchQuote } from "@/lib/data/quote";
 
-const ALL_MODEL_IDS: ModelId[] = ["gpt", "gemini", "claude"];
+const MODEL_IDS: ModelId[] = ["gpt", "gemini"];
 
 type EmitFn = (evt: StreamEvent) => void;
 
 interface RunOptions {
   ticker: string;
   emit: EmitFn;
-  enabledModels?: ModelId[]; // 미지정 시 전체 활성
 }
 
-export async function runAnalysis({
-  ticker,
-  emit,
-  enabledModels,
-}: RunOptions): Promise<AnalysisRecord> {
+export async function runAnalysis({ ticker, emit }: RunOptions): Promise<AnalysisRecord> {
   const startedAt = new Date().toISOString();
   const recordId = randomUUID();
   const opinions: ModelOpinion[] = [];
-
-  const activeIds: ModelId[] =
-    enabledModels && enabledModels.length > 0
-      ? ALL_MODEL_IDS.filter((id) => enabledModels.includes(id))
-      : ALL_MODEL_IDS;
-
-  if (activeIds.length === 0) {
-    emit({ type: "error", message: "활성화된 모델이 없습니다. 최소 1개 이상 활성화하세요." });
-    throw new Error("No active models");
-  }
 
   // 시세 가져오기 (실패해도 계속 진행)
   const quote: QuoteSnapshot | null = await fetchQuote(ticker);
@@ -53,12 +38,12 @@ export async function runAnalysis({
   // ===== Round 1 =====
   emit({ type: "round-begin", round: 1 });
   const r1Prompt = buildRound1Prompt({ ticker, quote });
-  const r1Results = await runRoundParallel(activeIds, r1Prompt, 1, emit);
+  const r1Results = await runRoundParallel(MODEL_IDS, r1Prompt, 1, emit);
   opinions.push(...r1Results);
 
   // ===== Round 2 =====
   emit({ type: "round-begin", round: 2 });
-  const r2Tasks = activeIds.map((selfModel) => {
+  const r2Tasks = MODEL_IDS.map((selfModel) => {
     const ownR1 = r1Results.find((o) => o.modelId === selfModel)!;
     const othersR1 = r1Results.filter((o) => o.modelId !== selfModel);
     const prompt = buildRound2Prompt({
@@ -88,7 +73,7 @@ export async function runAnalysis({
 
   // ===== Round 3 =====
   emit({ type: "round-begin", round: 3 });
-  const r3Tasks = activeIds.map((selfModel) => {
+  const r3Tasks = MODEL_IDS.map((selfModel) => {
     const ownR1 = r1Results.find((o) => o.modelId === selfModel)!;
     const ownR2 = r2Results.find((o) => o.modelId === selfModel)!;
     const othersR2 = r2Results.filter((o) => o.modelId !== selfModel);

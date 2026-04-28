@@ -9,10 +9,8 @@ import { GaugePanel } from "@/components/GaugePanel";
 import { DiscussionGrid } from "@/components/DiscussionGrid";
 import { SynthesisPanel } from "@/components/SynthesisPanel";
 import { Disclaimer } from "@/components/Disclaimer";
-import { ModelToggleBar } from "@/components/ModelToggleBar";
 import {
   MODELS,
-  type ModelId,
   type ModelOpinion,
   type QuoteSnapshot,
   type StreamEvent,
@@ -46,84 +44,65 @@ const initialState: AnalysisState = {
 export default function HomePage() {
   const [state, setState] = useState<AnalysisState>(initialState);
   const [running, setRunning] = useState(false);
-  const [disabledModels, setDisabledModels] = useState<Set<ModelId>>(new Set());
   const abortRef = useRef<AbortController | null>(null);
 
-  const toggleModel = useCallback((id: ModelId) => {
-    setDisabledModels((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }, []);
+  const handleSubmit = useCallback(async (ticker: string) => {
+    abortRef.current?.abort();
+    const ac = new AbortController();
+    abortRef.current = ac;
 
-  const handleSubmit = useCallback(
-    async (ticker: string) => {
-      const enabled = MODELS.filter((m) => !disabledModels.has(m.id)).map((m) => m.id);
-      if (enabled.length === 0) {
-        setState((s) => ({ ...s, error: "최소 1개 이상의 LLM을 활성화하세요." }));
+    setRunning(true);
+    setState({ ...initialState, ticker });
+
+    try {
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ticker }),
+        signal: ac.signal,
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+        setState((s) => ({ ...s, error: data.error ?? "요청 실패" }));
+        setRunning(false);
         return;
       }
 
-      abortRef.current?.abort();
-      const ac = new AbortController();
-      abortRef.current = ac;
+      const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
 
-      setRunning(true);
-      setState({ ...initialState, ticker });
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
 
-      try {
-        const res = await fetch("/api/analyze", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ticker, enabledModels: enabled }),
-          signal: ac.signal,
-        });
+        const events = buffer.split("\n\n");
+        buffer = events.pop() ?? "";
 
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
-          setState((s) => ({ ...s, error: data.error ?? "요청 실패" }));
-          setRunning(false);
-          return;
-        }
-
-        const reader = res.body!.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-
-          const events = buffer.split("\n\n");
-          buffer = events.pop() ?? "";
-
-          for (const block of events) {
-            const line = block.split("\n").find((l) => l.startsWith("data: "));
-            if (!line) continue;
-            try {
-              const evt = JSON.parse(line.slice(6)) as StreamEvent;
-              applyEvent(evt);
-            } catch {
-              // ignore malformed
-            }
+        for (const block of events) {
+          const line = block.split("\n").find((l) => l.startsWith("data: "));
+          if (!line) continue;
+          try {
+            const evt = JSON.parse(line.slice(6)) as StreamEvent;
+            applyEvent(evt);
+          } catch {
+            // ignore malformed
           }
         }
-      } catch (err) {
-        if ((err as Error).name !== "AbortError") {
-          setState((s) => ({
-            ...s,
-            error: err instanceof Error ? err.message : String(err),
-          }));
-        }
-      } finally {
-        setRunning(false);
       }
-    },
-    [disabledModels],
-  );
+    } catch (err) {
+      if ((err as Error).name !== "AbortError") {
+        setState((s) => ({
+          ...s,
+          error: err instanceof Error ? err.message : String(err),
+        }));
+      }
+    } finally {
+      setRunning(false);
+    }
+  }, []);
 
   function applyEvent(evt: StreamEvent) {
     setState((s) => {
@@ -177,7 +156,6 @@ export default function HomePage() {
   }
 
   const hasResult = state.opinions.length > 0 || state.synthesis !== null;
-  const activeCount = MODELS.length - disabledModels.size;
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
@@ -192,7 +170,7 @@ export default function HomePage() {
               <span className="text-gradient-brand">AI Compete</span>
             </h1>
             <p className="text-xs text-[var(--color-muted-foreground)]">
-              GPT · Gemini · Claude 3 라운드 토론 + Perplexity 실시간 종합
+              GPT · Gemini 3 라운드 토론 + Perplexity 실시간 종합
             </p>
           </div>
         </div>
@@ -200,16 +178,13 @@ export default function HomePage() {
 
       {/* Search */}
       <section className="mb-10 flex flex-col items-center gap-4">
-        <TickerSearch onSubmit={handleSubmit} disabled={running || activeCount === 0} />
+        <TickerSearch onSubmit={handleSubmit} disabled={running} />
         {!hasResult && !running && (
           <p className="text-center text-sm text-[var(--color-muted)]">
-            미국 주식 티커를 입력하면 활성 LLM이 실시간 서치로 포지션을 분석합니다.
+            미국 주식 티커를 입력하면 GPT와 Gemini가 실시간 서치로 포지션을 분석합니다.
             <br />
             <span className="text-xs">
-              현재 활성 모델 <span className="font-mono font-semibold text-emerald-400">{activeCount}/3</span>
-              {activeCount === 0 && (
-                <span className="ml-2 text-red-400">최소 1개 이상 활성화 필요</span>
-              )}
+              참여 모델 <span className="font-mono font-semibold text-emerald-400">{MODELS.length}개</span>
               {" · "}예상 소요 30~75초
             </span>
           </p>
@@ -234,7 +209,7 @@ export default function HomePage() {
             <div className="flex items-center justify-center gap-2 text-sm text-emerald-400">
               <Activity className="h-4 w-4 animate-pulse" />
               <span className="font-medium">
-                {state.currentRound}차 라운드 진행 중 · {activeCount}개 모델 병렬 분석
+                {state.currentRound}차 라운드 진행 중 · {MODELS.length}개 모델 병렬 분석
               </span>
             </div>
           )}
@@ -247,19 +222,10 @@ export default function HomePage() {
 
           {/* Discussion */}
           <section>
-            <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[var(--color-muted)]">
+            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--color-muted)]">
               3 라운드 토론
-              <span className="rounded bg-[var(--color-surface)]/60 px-2 py-0.5 text-[10px] normal-case tracking-normal text-[var(--color-muted-foreground)]">
-                상단 모델 박스 클릭 시 활성/비활성 토글
-              </span>
             </h2>
-            <DiscussionGrid
-              opinions={state.opinions}
-              currentRound={state.currentRound}
-              disabledModels={disabledModels}
-              onToggleModel={toggleModel}
-              toggleLocked={running}
-            />
+            <DiscussionGrid opinions={state.opinions} currentRound={state.currentRound} />
           </section>
 
           {/* Gauges */}
@@ -276,11 +242,7 @@ export default function HomePage() {
                 신뢰도 바 = <span className="text-foreground/80">0 ~ 100%</span>
               </p>
             </div>
-            <GaugePanel
-              opinions={state.opinions}
-              loading={running}
-              disabledModels={disabledModels}
-            />
+            <GaugePanel opinions={state.opinions} loading={running} />
           </section>
 
           {/* Synthesis */}
@@ -294,22 +256,6 @@ export default function HomePage() {
             </section>
           )}
         </div>
-      )}
-
-      {/* Toggle preview when no analysis yet */}
-      {!state.ticker && !running && (
-        <section className="mb-10">
-          <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[var(--color-muted)]">
-            토론 참여 LLM 선택
-            <span className="rounded bg-[var(--color-surface)]/60 px-2 py-0.5 text-[10px] normal-case tracking-normal text-[var(--color-muted-foreground)]">
-              클릭하여 활성/비활성
-            </span>
-          </h2>
-          <ModelToggleBar
-            disabledModels={disabledModels}
-            onToggleModel={toggleModel}
-          />
-        </section>
       )}
 
       <Disclaimer />

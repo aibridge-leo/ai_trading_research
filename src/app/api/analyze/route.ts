@@ -1,37 +1,20 @@
 import { NextRequest } from "next/server";
 import { runAnalysis } from "@/lib/orchestrator";
-import type { ModelId, StreamEvent } from "@/lib/types";
+import type { StreamEvent } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300; // 5분
 
-const VALID_MODELS: ModelId[] = ["gpt", "gemini", "claude"];
-
 export async function POST(req: NextRequest) {
-  const body = (await req.json().catch(() => ({}))) as {
-    ticker?: string;
-    enabledModels?: string[];
-  };
+  const body = (await req.json().catch(() => ({}))) as { ticker?: string };
   const symbol = (body.ticker ?? "").toUpperCase().trim();
-  const enabledModels = Array.isArray(body.enabledModels)
-    ? (body.enabledModels.filter((m): m is ModelId =>
-        VALID_MODELS.includes(m as ModelId),
-      ) as ModelId[])
-    : undefined;
 
   if (!symbol || !/^[A-Z.\-]{1,10}$/.test(symbol)) {
     return new Response(JSON.stringify({ error: "유효한 미국 주식 티커를 입력하세요." }), {
       status: 400,
       headers: { "Content-Type": "application/json; charset=utf-8" },
     });
-  }
-
-  if (enabledModels && enabledModels.length === 0) {
-    return new Response(
-      JSON.stringify({ error: "최소 1개 이상의 LLM을 활성화하세요." }),
-      { status: 400, headers: { "Content-Type": "application/json; charset=utf-8" } },
-    );
   }
 
   const encoder = new TextEncoder();
@@ -46,7 +29,7 @@ export async function POST(req: NextRequest) {
       controller.enqueue(encoder.encode(": connected\n\n"));
 
       try {
-        await runAnalysis({ ticker: symbol, emit: send, enabledModels });
+        await runAnalysis({ ticker: symbol, emit: send });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         send({ type: "error", message });

@@ -1,45 +1,44 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
 import { ChevronsDown, ChevronsUp } from "lucide-react";
 import { OpinionCard } from "./OpinionCard";
 import { ModelIcon } from "./ModelIcon";
-import { ModelToggleBar } from "./ModelToggleBar";
-import { MODELS, type ModelId, type ModelOpinion } from "@/lib/types";
+import { MODELS, type ModelOpinion } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 interface Props {
   opinions: ModelOpinion[];
   currentRound: 1 | 2 | 3 | null;
-  disabledModels: Set<ModelId>;
-  onToggleModel: (id: ModelId) => void;
-  toggleLocked: boolean;
 }
 
 const ROUNDS: (1 | 2 | 3)[] = [1, 2, 3];
 
-export function DiscussionGrid({
-  opinions,
-  currentRound,
-  disabledModels,
-  onToggleModel,
-  toggleLocked,
-}: Props) {
-  // 일괄 펼침/접기 신호. null이면 카드 자체 상태 유지.
-  // 토글 클릭마다 [true, null, false, null, true, ...]가 아니라 단순히 true/false를 새 객체로 보내서
-  // 자식이 다시 렌더 트리거되도록 nonce를 함께 사용.
+export function DiscussionGrid({ opinions, currentRound }: Props) {
+  // 일괄 펼침/접기 신호 (nonce 패턴으로 자식 카드 강제 동기화)
   const [bulkSignal, setBulkSignal] = useState<{ value: boolean; nonce: number } | null>(null);
   const hasOpinions = opinions.length > 0;
 
   return (
     <div className="space-y-4">
-      {/* 모델 헤더 + 토글 */}
-      <ModelToggleBar
-        disabledModels={disabledModels}
-        onToggleModel={onToggleModel}
-        locked={toggleLocked}
-      />
+      {/* 모델 헤더 (토글 없는 단순 표시) */}
+      <div className="grid grid-cols-2 gap-4">
+        {MODELS.map((m) => (
+          <div
+            key={m.id}
+            className="flex items-center gap-3 rounded-xl border bg-[var(--color-surface)]/40 px-4 py-3"
+            style={{ borderColor: `${m.accent}40` }}
+          >
+            <ModelIcon model={m} size={32} />
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-semibold">{m.label}</div>
+              <div className="truncate text-[11px] text-[var(--color-muted)]">
+                {m.provider}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
 
       {/* 일괄 펼침/접기 */}
       {hasOpinions && (
@@ -85,24 +84,8 @@ export function DiscussionGrid({
                 {round}
               </span>
             </div>
-            <div className="grid grid-cols-3 gap-4 pl-2">
+            <div className="grid grid-cols-2 gap-4 pl-2">
               {MODELS.map((m) => {
-                const disabled = disabledModels.has(m.id);
-                if (disabled) {
-                  return (
-                    <motion.div
-                      key={`${m.id}-${round}`}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="flex min-h-[140px] flex-col items-center justify-center gap-2 rounded-xl border border-dashed bg-[var(--color-surface)]/20 p-4"
-                    >
-                      <ModelIcon model={m} size={36} disabled />
-                      <span className="text-xs text-[var(--color-muted)]">
-                        {m.label} 비활성화됨
-                      </span>
-                    </motion.div>
-                  );
-                }
                 const op = opinions.find((o) => o.modelId === m.id && o.round === round) ?? null;
                 return (
                   <OpinionCard

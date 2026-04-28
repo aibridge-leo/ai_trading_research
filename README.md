@@ -1,6 +1,6 @@
 # AI Compete · Multi-LLM 미국 주식 포지션 분석 대시보드
 
-> 종목을 입력하면 **GPT · Gemini · Claude** 세 LLM이 실시간 웹 검색을 활용해 **3 라운드 토론**을 진행하고, **Perplexity**가 9개 의견 + 실시간 보강 정보를 종합해 최종 포지션을 제시합니다.
+> 종목을 입력하면 **GPT · Gemini** 두 LLM이 실시간 웹 검색을 활용해 **3 라운드 토론**을 진행하고, **Perplexity**가 6개 의견 + 실시간 보강 정보를 종합해 최종 포지션을 제시합니다.
 
 ![dashboard](https://img.shields.io/badge/Next.js-16-black) ![ts](https://img.shields.io/badge/TypeScript-5.7-blue) ![ai-sdk](https://img.shields.io/badge/Vercel%20AI%20SDK-v6-purple) ![license](https://img.shields.io/badge/license-MIT-green)
 
@@ -8,12 +8,11 @@
 
 ## 핵심 기능
 
-- 🤖 **4개 LLM 동시 활용** — GPT-5.4 · Gemini 3 Pro · Claude Opus 4.7 · Perplexity Sonar Reasoning Pro
-- 🔄 **3 라운드 토론** — 독립 의견 → 상호 검토 → 최종 입장 (총 9개 카드)
+- 🤖 **3개 LLM 협업** — GPT-5.4 · Gemini 3 Pro 토론 + Perplexity Sonar Reasoning Pro 종합
+- 🔄 **3 라운드 토론** — 독립 의견 → 상호 검토 → 최종 입장 (총 6개 카드)
 - 🌐 **실시간 웹 검색** — 모든 모델이 자체 검색 도구로 최신 뉴스/실적/시세 반영
 - 📊 **인터랙티브 게이지** — 각 모델의 포지션 강도(−100~+100) + 신뢰도(0~100%) 시각화
 - 💡 **Perplexity 종합** — 합의/대립 포인트, 실시간 보강 정보, 가격 가이드(목표가/손절가/진입 구간), 출처 인용
-- 🎚 **모델 토글** — 사용자가 GPT/Gemini/Claude 중 원하는 모델만 선택적 활성화
 - 💾 **JSON 이력 저장** — 모든 분석을 `data/history/`에 보존
 - 🌙 **다크 모드 트레이딩 톤** — 모던 UI + 진행률 카운트업 애니메이션
 
@@ -41,8 +40,9 @@ npm install
 |---|---|---|
 | `OPENAI_API_KEY` | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) | |
 | `GOOGLE_GENERATIVE_AI_API_KEY` | [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey) | 무료 한도 충분 |
-| `ANTHROPIC_API_KEY` | [console.anthropic.com](https://console.anthropic.com) | **⚠️ Claude.ai 구독과 별개**. 콘솔에서 결제 등록 + 크레딧 충전 필요 |
 | `PERPLEXITY_API_KEY` | [perplexity.ai/settings/api](https://www.perplexity.ai/settings/api) | |
+
+> Anthropic API 키는 **사용하지 않습니다** (현재 버전은 GPT + Gemini + Perplexity 3종만 사용).
 
 ### 3. `.env.local` 작성
 
@@ -71,38 +71,37 @@ npm run dev
 [Yahoo Finance v8 chart로 시세 조회]
    │
    ▼
-Round 1: GPT, Gemini, Claude 병렬 호출 (각자 독립 의견)
+Round 1: GPT, Gemini 병렬 호출 (각자 독립 의견)
    │
    ▼
-Round 2: 다른 두 모델의 1차 의견을 컨텍스트로 주입 → 반박/동의/보완
+Round 2: 다른 모델의 1차 의견을 컨텍스트로 주입 → 반박/동의/보완
    │
    ▼
-Round 3: 다른 두 모델의 2차 의견을 보고 최종 입장 확정
+Round 3: 다른 모델의 2차 의견을 보고 최종 입장 확정
    │
    ▼
-Perplexity sonar-reasoning-pro: 9개 의견 + 실시간 검색 → 종합 요약
+Perplexity sonar-reasoning-pro: 6개 의견 + 실시간 검색 → 종합 요약
    │
    ▼
 data/history/{timestamp}_{TICKER}.json 으로 자동 저장
 ```
 
-라운드 간은 직렬, 라운드 내 3개 모델은 병렬 호출 (`Promise.all`).
+라운드 간은 직렬, 라운드 내 2개 모델은 병렬 호출 (`Promise.all`).
 
 ---
 
 ## 비용 가이드
 
-1회 분석당 호출 = **9 (토론) + 1 (Perplexity 종합) = 10 콜**, 모두 웹 검색 포함.
+1회 분석당 호출 = **6 (토론) + 1 (Perplexity 종합) = 7 콜**, 모두 웹 검색 포함.
 
 | 모델 | 1회 분석 호출 수 | 추정 비용 |
 |---|---|---|
 | GPT-5.4 | 3 | ~$0.10 |
 | Gemini 3 Pro | 3 | ~$0.10 |
-| Claude Opus 4.7 | 3 | ~$0.40~0.80 ⚠️ |
 | Perplexity Sonar Reasoning Pro | 1 | ~$0.05 |
-| **합계** | **10** | **~$0.65~1.05 / 회** |
+| **합계** | **7** | **~$0.25 / 회** |
 
-> **비용 절감 팁**: `src/lib/models/claude.ts`에서 `claude-opus-4-7` → `claude-sonnet-4-6`으로 한 줄만 바꾸면 회당 $0.20 정도로 떨어집니다 (각 모델 파일에 대체 모델 주석으로 표기).
+> **비용 절감 팁**: 각 모델 파일에서 `gpt-5.4` → `gpt-5.4-mini`, `gemini-3-pro-preview` → `gemini-3-flash-preview`로 바꾸면 회당 $0.05 수준까지 내려갑니다.
 
 ---
 
@@ -111,7 +110,7 @@ data/history/{timestamp}_{TICKER}.json 으로 자동 저장
 - **Framework**: Next.js 16 (App Router, Turbopack)
 - **언어**: TypeScript 5.7+
 - **스타일**: Tailwind CSS v4
-- **AI SDK**: Vercel `ai` v6 + `@ai-sdk/openai`/`google`/`anthropic` v3
+- **AI SDK**: Vercel `ai` v6 + `@ai-sdk/openai`/`google` v3
 - **애니메이션**: Framer Motion
 - **아이콘**: Lucide React + 각 사 공식 로고
 - **폰트**: Geist Sans / Mono
@@ -139,7 +138,7 @@ src/
 │   ├── ModelToggleBar.tsx      # 모델 활성/비활성 토글
 │   ├── Gauge.tsx + GaugePanel  # 포지션 게이지 (진행률 카운트업)
 │   ├── OpinionCard.tsx         # 카드별 접기/펼치기
-│   ├── DiscussionGrid.tsx      # 3×3 토론 그리드
+│   ├── DiscussionGrid.tsx      # 2 모델 × 3 라운드 토론 그리드
 │   ├── SynthesisPanel.tsx      # Perplexity 종합 (블록 분리)
 │   └── Disclaimer.tsx
 └── lib/
@@ -147,7 +146,7 @@ src/
     ├── models/
     │   ├── prompts.ts          # 라운드별 프롬프트 빌더
     │   ├── parse.ts            # <think> 제거 + balanced JSON 추출
-    │   ├── gpt.ts / gemini.ts / claude.ts / perplexity.ts
+    │   ├── gpt.ts / gemini.ts / perplexity.ts
     │   └── index.ts
     ├── orchestrator/
     │   └── index.ts            # 3 라운드 오케스트레이션
@@ -164,8 +163,8 @@ src/
 각 LLM 어댑터 파일 상단의 `model:` 라인 한 줄만 바꾸면 즉시 교체됩니다.
 
 ```ts
-// src/lib/models/claude.ts
-model: anthropic("claude-opus-4-7"),  // → "claude-sonnet-4-6" 등
+// src/lib/models/gpt.ts
+model: openai.responses("gpt-5.4"),  // → "gpt-5.4-mini" 등
 ```
 
 지원 모델 ID는 `node_modules/@ai-sdk/{provider}/dist/index.d.ts`에서 확인 가능.

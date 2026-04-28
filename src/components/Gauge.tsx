@@ -14,7 +14,6 @@ interface Props {
   confidence: number | null;
   position: Position | null;
   loading?: boolean;
-  disabled?: boolean;
   // 0~100, 라운드 진행률 (분석 중 시각화용)
   progress?: number;
 }
@@ -55,7 +54,6 @@ export function Gauge({
   confidence,
   position,
   loading,
-  disabled,
   progress,
 }: Props) {
   const hasData = strength !== null && confidence !== null && position !== null;
@@ -63,7 +61,7 @@ export function Gauge({
 
   // 진행률 (0~100). 분석 중이며 아직 100% 미만일 때 카운트업 표시.
   const progressPct = progress ?? (hasData ? 100 : 0);
-  const isAnalyzing = !!loading && !disabled && progressPct < 100;
+  const isAnalyzing = !!loading && progressPct < 100;
   const animatedProgress = useCountUp(progressPct);
 
   // 진행률을 호 길이에 매핑 (0~100 → 0~PI*RADIUS)
@@ -85,16 +83,11 @@ export function Gauge({
   const progressColor = isAnalyzing ? model.accent : color;
 
   return (
-    <div
-      className={cn(
-        "flex flex-col gap-3 rounded-2xl border bg-[var(--color-surface)]/60 p-5 backdrop-blur transition-opacity",
-        disabled && "opacity-40",
-      )}
-    >
+    <div className="flex flex-col gap-3 rounded-2xl border bg-[var(--color-surface)]/60 p-5 backdrop-blur">
       {/* 헤더 */}
       <div className="flex w-full items-center justify-between">
         <div className="flex items-center gap-2">
-          <ModelIcon model={model} size={22} disabled={disabled} />
+          <ModelIcon model={model} size={22} />
           <span className="text-sm font-semibold">{model.label}</span>
         </div>
         <span className="text-[10px] uppercase tracking-wider text-[var(--color-muted)]">
@@ -247,13 +240,11 @@ export function Gauge({
             className={cn("text-sm font-semibold", !hasData && "text-[var(--color-muted)]")}
             style={{ color: hasData ? color : undefined }}
           >
-            {disabled
-              ? "비활성"
-              : isAnalyzing
-                ? `${Math.ceil(animatedProgress / 33.34)}/3 라운드`
-                : hasData
-                  ? position
-                  : "—"}
+            {isAnalyzing
+              ? `${Math.ceil(animatedProgress / 33.34)}/3 라운드`
+              : hasData
+                ? position
+                : "—"}
           </span>
         </div>
 

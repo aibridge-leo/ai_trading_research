@@ -1,4 +1,4 @@
-export type ModelId = "gpt" | "gemini" | "claude";
+export type ModelId = "gpt" | "gemini";
 
 export interface ModelMeta {
   id: ModelId;
@@ -25,13 +25,6 @@ export const MODELS: ModelMeta[] = [
     provider: "Google · Gemini 3 Pro",
     accent: "#4285f4",
     icon: "/icons/gemini.png",
-  },
-  {
-    id: "claude",
-    label: "Claude",
-    provider: "Anthropic · Claude Opus 4.7",
-    accent: "#d97706",
-    icon: "/icons/claude.png",
   },
 ];
 
