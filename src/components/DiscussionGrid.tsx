@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
-import { ChevronDown, ChevronUp, ChevronsDown, ChevronsUp } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { OpinionCard } from "./OpinionCard";
 import { ModelIcon } from "./ModelIcon";
 import { MODELS, type ModelOpinion } from "@/lib/types";
@@ -27,14 +26,6 @@ export function DiscussionGrid({ opinions, currentRound }: Props) {
 
   const toggleRound = (r: 1 | 2 | 3) =>
     setRoundExpanded((s) => ({ ...s, [r]: !s[r] }));
-  const expandAll = () =>
-    setRoundExpanded({ 1: true, 2: true, 3: true });
-  const collapseAll = () =>
-    setRoundExpanded({ 1: false, 2: false, 3: false });
-
-  const hasOpinions = opinions.length > 0;
-  const allExpanded = ROUNDS.every((r) => roundExpanded[r]);
-  const allCollapsed = ROUNDS.every((r) => !roundExpanded[r]);
 
   return (
     <div className="space-y-4">
@@ -56,30 +47,6 @@ export function DiscussionGrid({ opinions, currentRound }: Props) {
           </div>
         ))}
       </div>
-
-      {/* 일괄 펼침/접기 (모든 라운드) */}
-      {hasOpinions && (
-        <div className="flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={expandAll}
-            disabled={allExpanded}
-            className="flex items-center gap-1 rounded-md border border-[var(--color-border-subtle)] bg-[var(--color-surface)]/40 px-2.5 py-1 text-[11px] text-[var(--color-muted-foreground)] transition hover:border-[var(--color-border)] hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <ChevronsDown className="h-3 w-3" />
-            전체 펼치기
-          </button>
-          <button
-            type="button"
-            onClick={collapseAll}
-            disabled={allCollapsed}
-            className="flex items-center gap-1 rounded-md border border-[var(--color-border-subtle)] bg-[var(--color-surface)]/40 px-2.5 py-1 text-[11px] text-[var(--color-muted-foreground)] transition hover:border-[var(--color-border)] hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <ChevronsUp className="h-3 w-3" />
-            전체 접기
-          </button>
-        </div>
-      )}
 
       {/* 라운드 행 */}
       {ROUNDS.map((round) => {
