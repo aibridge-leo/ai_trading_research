@@ -6,11 +6,16 @@ services:
     runtime: node
     plan: free
     autoDeploy: true
-    buildCommand: npm ci && npm run build
-    startCommand: npm run start
+    # standalone 서버로 실행(메모리↓). 빌드 후 public·정적파일을 standalone에 복사.
+    buildCommand: npm ci && npm run build && cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/
+    startCommand: node .next/standalone/server.js
     envVars:
       - key: NODE_VERSION
         value: "22"
+      # Render가 HOSTNAME을 컨테이너명으로 설정 → standalone 서버가 0.0.0.0이 아닌
+      # 엉뚱한 인터페이스에 바인딩되어 502 발생. 0.0.0.0으로 강제.
+      - key: HOSTNAME
+        value: 0.0.0.0
       # --- LLM 분석 (4개 모두 필요) ---
       - key: OPENAI_API_KEY
         sync: false
